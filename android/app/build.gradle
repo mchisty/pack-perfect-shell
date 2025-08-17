@@ -1,27 +1,40 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.packperfect.app"
-    compileSdk rootProject.ext.compileSdkVersion
-    defaultConfig {
-        applicationId "com.packperfect.app"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
-            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+
+// Add this at the top of the android { } block (or anywhere inside it)
+def hasSigning = project.hasProperty("PACKPERFECT_STORE_FILE") &&
+                 project.hasProperty("PACKPERFECT_STORE_PASSWORD") &&
+                 project.hasProperty("PACKPERFECT_KEY_ALIAS") &&
+                 project.hasProperty("PACKPERFECT_KEY_PASSWORD")
+
+signingConfigs {
+    release {
+        if (hasSigning) {
+            // The workflow restores the keystore to: android/app/packperfect.keystore
+            // In the app module, file("packperfect.keystore") points to that file.
+            storeFile file(PACKPERFECT_STORE_FILE)           // e.g. "packperfect.keystore"
+            storePassword PACKPERFECT_STORE_PASSWORD
+            keyAlias PACKPERFECT_KEY_ALIAS
+            keyPassword PACKPERFECT_KEY_PASSWORD
         }
     }
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
+}
+
+buildTypes {
+    release {
+        // If you already have a 'release' block, just add the next line inside it:
+        signingConfig hasSigning ? signingConfigs.release : signingConfigs.debug
+
+        // keep your existing settings (minifyEnabled/shrinkResources/proguard) as-is
+        // example:
+        // minifyEnabled false
+        // shrinkResources false
     }
+    // keep your 'debug' block as-is
+}
+	
+	
 }
 
 repositories {
