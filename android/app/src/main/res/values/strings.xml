@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Pack Perfect</string>
+    <string name="title_activity_main">Pack Perfect</string>
+    <string name="package_name">com.packperfect.app</string>
+    <string name="custom_url_scheme">com.packperfect.app</string>
+</resources>
