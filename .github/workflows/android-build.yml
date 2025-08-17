@@ -1,0 +1,97 @@
+name: Android AAB (Capacitor)
+
+on:
+  workflow_dispatch:     # run manually from Actions tab
+  push:
+    branches: [ main ]   # optional: build on every push to main
+
+jobs:
+  build-android-aab:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install deps
+        run: |
+          npm ci
+
+      # Build web assets for Capacitor (creates /dist or whatever your webDir is)
+      - name: Build web app
+        run: |
+          npm run build
+
+      # (Optional) show capacitor config for sanity
+      - name: Print capacitor config
+        run: |
+          cat capacitor.config.ts || true
+
+      # Sync web → native android project
+      - name: Capacitor sync (android)
+        run: |
+          npx cap sync android
+
+      # Recreate release keystore from secret
+      # -------------------------------------------------------
+      # You must set these GitHub Secrets in your repo:
+      #   KEYSTORE_BASE64         (base64 of your packperfect.keystore)
+      #   STORE_PASSWORD
+      #   KEY_PASSWORD
+      #   KEY_ALIAS  (e.g., packperfect)
+      # -------------------------------------------------------
+      - name: Restore keystore
+        working-directory: android/app
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > packperfect.keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+
+      # Write signing props into gradle.properties for release signing
+      - name: Configure signing
+        working-directory: android
+        run: |
+          {
+            echo "PACKPERFECT_STORE_FILE=packperfect.keystore"
+            echo "PACKPERFECT_STORE_PASSWORD=${{ secrets.STORE_PASSWORD }}"
+            echo "PACKPERFECT_KEY_ALIAS=${{ secrets.KEY_ALIAS }}"
+            echo "PACKPERFECT_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}"
+          } >> gradle.properties
+
+      # Cache Gradle to speed up subsequent builds
+      - name: Gradle cache
+        uses: gradle/gradle-build-action@v3
+        with:
+          cache-read-only: false
+
+      - name: Grant execute permission for Gradle
+        working-directory: android
+        run: chmod +x ./gradlew
+
+      # Build signed AAB
+      - name: Build AAB (bundleRelease)
+        working-directory: android
+        run: |
+          ./gradlew clean
+          ./gradlew :app:bundleRelease
+
+      # Upload the AAB as an artifact you can download from Actions
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pack-perfect-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
