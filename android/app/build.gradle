@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace "com.packperfect.app"
-    compileSdkVersion 34   // Hardcoded to avoid CI issues
+    compileSdkVersion 35   // Hardcoded to avoid CI issues
 
     defaultConfig {
         applicationId "com.packperfect.app"
         minSdkVersion 24
-        targetSdkVersion 34
+        targetSdkVersion 35
         versionCode 1
         versionName "1.0.1"
     }
